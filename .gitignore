@@ -1,0 +1,5 @@
+/target
+/dependencies
+Cargo.lock
+salida.log
+restore_data.bin

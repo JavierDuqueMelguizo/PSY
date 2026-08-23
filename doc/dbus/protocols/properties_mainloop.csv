@@ -1,0 +1,6 @@
+Propiedad (Clave),Valores típicos,Descripción
+loop.name,"Texto (ej. ""main-loop"", ""app-loop"")",Nombre identificador del bucle para depuración y registros (logs).
+library.name,"""support/libspa-support""",Módulo o plugin SPA que provee la implementación del bucle.
+clock.name,"""clock.system"", ""clock.monotonic"", ""clock.realtime""",Fuente del reloj empleada para controlar los temporizadores (timers).
+loop.cancel,"""true"", ""false""",Activa o desactiva la cancelación e interrupción asíncrona dentro del bucle.
+cpu.zero-denormals,"""true"", ""false""",Fuerza la desactivación de números denormales en punto flotante para optimizar el rendimiento en tiempo real.

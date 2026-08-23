@@ -1,0 +1,18 @@
+Código D-Bus,Nombre / Descripción,C / GLib (GVariant),C++ (Qt DBus),Python,Rust (zbus / zvariant)
+y,BYTE (8 bits sin signo),guchar,uchar / quint8,int / bytes,u8
+b,BOOLEAN,gboolean,bool,bool,bool
+n,INT16 (16 bits con signo),gint16,qint16,int,i16
+q,UINT16 (16 bits sin signo),guint16,quint16,int,u16
+i,INT32 (32 bits con signo),gint32,qint32,int,i32
+u,UINT32 (32 bits sin signo),guint32,quint32,int,u32
+x,INT64 (64 bits con signo),gint64,qint64,int,i64
+t,UINT64 (64 bits sin signo),guint64,quint64,int,u64
+d,DOUBLE (Coma flotante IEEE 754),gdouble,double,float,f64
+s,STRING (Texto en UTF-8),gchar*,QString,str,String / &str
+o,OBJECT_PATH (Ruta de objeto DBus),gchar*,QDBusObjectPath,str,ObjectPath
+g,SIGNATURE (Firma de tipo),gchar*,QDBusSignature,str,Signature
+h,UNIX_FD (Descriptor de archivo),gint32,QDBusUnixFileDescriptor,int,zbus::zvariant::Fd
+v,VARIANT (Contenedor dinámico),GVariant*,QDBusVariant / QVariant,Any / object,Value
+a,ARRAY (Lista de tipo homogêneo),GVariant* (aT),QList<T> / QVector<T>,list,Vec<T> / Array
+( ... ),STRUCT (Tupla de tipos mixtos),GVariant* ((...)),Estructura personalizada,tuple,"Tupla (T1, T2, ...)"
+a{k:v},DICT_ENTRY (Mapa clave-valor),GVariant* (a{sv}),"QVariantMap / QMap<K,V>",dict,"HashMap<K, V>"
