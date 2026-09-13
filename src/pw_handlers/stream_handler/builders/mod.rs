@@ -245,114 +245,6 @@ impl PodValue{
         )
     }
 }
-/// Impl to take value
-// impl PodValue{
-//     pub fn to_bool(&self) -> Option<&bool>{
-//         match self {
-//             Self::Bool(v) => Some(v),
-//             _ => None
-//         }
-//     }
-//     pub fn to_id(&self) -> Option<PwPODId>{
-//         match self {
-//             Self::Id(v) => Some(v.clone()),
-//             _ => None
-//         }
-//     }
-//     pub fn to_int(&self) -> Option<i32>{
-//         match self {
-//             Self::Int(v) => Some(v.clone()),
-//             _ => None
-//         }
-//     }
-//     pub fn to_long(&self) -> Option<i64>{
-//         match self {
-//             Self::Long(v) => Some(v.clone()),
-//             _ => None
-//         }
-//     }
-//     pub fn to_float(&self) -> Option<f32>{
-//         match self {
-//             Self::Float(v) => Some(v.clone()),
-//             _ => None
-//         }
-//     }
-//     pub fn to_double(&self) -> Option<f64>{
-//         match self {
-//             Self::Double(v) => Some(v.clone()),
-//             _ => None
-//         }
-//     }
-//     pub fn to_string(&self) -> Option<String>{
-//         match self {
-//             Self::String(v) => Some(v.clone()),
-//             _ => None
-//         }
-//     }
-//     pub fn to_bytes(&self) -> Option<Vec<u8>>{
-//         match self {
-//             Self::Bytes(v) => Some(v.clone()),
-//             _ => None
-//         }
-//     }
-//     pub fn to_rectangle(&self) -> Option<PwPODRectangle>{
-//         match self {
-//             Self::Rectangle(v) => Some(v.clone()),
-//             _ => None
-//         }
-//     }
-//     pub fn to_fraction(&self) -> Option<PwPODFraction>{
-//         match self {
-//             Self::Fraction(v) => Some(v.clone()),
-//             _ => None
-//         }
-//     }
-//     pub fn to_fd(&self) -> Option<PwPODFD>{
-//         match self {
-//             Self::Fd(v) => Some(v.clone()),
-//             _ => None
-//         }
-//     }
-//     pub fn to_array(&self) -> Option<PwPODValueArray>{
-//         match self {
-//             Self::ValueArray(v) => Some(v.clone()),
-//             _ => None
-//         }
-//     }
-//     pub fn to_struct(&self) -> Option<Vec<PodValue>>{
-//         match self {
-//             Self::Struct(v) => Some(v.clone()),
-//             _ => None
-//         }
-//     }
-//     pub fn to_object(&self) -> Option<PwPODObject>{
-//         match self {
-//             Self::Object(v) => Some(v.clone()),
-//             _ => None
-//         }
-//     }
-//     pub fn to_pointer(&self) -> Option<(u32, *const c_void)>{
-//         match self {
-//             Self::Pointer(v,p) => Some((v.clone(),*p).clone()),
-//             _ => None
-//         }
-//     }
-//      pub fn to_choice(self) -> PodValue{
-//         match self{
-//             PodValue::None => panic!("No es posible transformer de PodValue::None a PodValue::Choice"),
-//             PodValue::Bool(v) => (AsChoice, v).into(),
-//             PodValue::Id(v) => (AsChoice, v).into(),
-//             PodValue::Int(v) => (AsChoice, v).into(),
-//             PodValue::Long(v) => (AsChoice, v).into(),
-//             PodValue::Float(v) => (AsChoice, v).into(),
-//             PodValue::Double(v) => (AsChoice, v).into(),
-//             PodValue::Rectangle(v) => (AsChoice, AsRectangle, v.width,v.height).into(),
-//             PodValue::Fraction(v) => (AsChoice, AsFraction, v.num, v.denom).into(),
-//             PodValue::Fd(fd) => (AsChoice, AsFD, fd.0).into(),
-//             value => panic!("No es posible transformar {:?} a PodValue::Choice", value)
-//         }
-//     }
-// }
 
 impl PartialEq for PodValue{
     fn eq(&self, other: &Self) -> bool {
@@ -631,24 +523,8 @@ where
 }
 
 /// BOOL
-// impl From<(AsChoice, bool)> for PodValue { // Discreto
-//     fn from((_, v): (AsChoice, bool)) -> Self {
-//         PodValue::Choice(PwPODChoiceValue::Bool(PwPODChoice(
-//             PwPODChoiceFlags::empty(),
-//             PwPODChoiceEnum::None(v),
-//         )))
-//     }
-// }
 
 /// ID
-// impl From<(AsChoice, PwPODId)> for PodValue { // Discreto
-//     fn from((_, v): (AsChoice, PwPODId)) -> Self {
-//         PodValue::Choice(PwPODChoiceValue::Id(PwPODChoice(
-//             PwPODChoiceFlags::empty(),
-//             PwPODChoiceEnum::None(v),
-//         )))
-//     }
-// }
 impl From<(AsChoice, Vec<PwPODId>)> for PodValue { // Enumerable
     fn from((_, v): (AsChoice, Vec<PwPODId>)) -> Self {
         if v.is_empty() {
@@ -665,14 +541,6 @@ impl From<(AsChoice, Vec<PwPODId>)> for PodValue { // Enumerable
 }
 
 /// INT
-// impl From<(AsChoice, i32)> for PodValue { // Discreto
-//     fn from((_, v): (AsChoice, i32)) -> Self {
-//         PodValue::Choice(PwPODChoiceValue::Int(PwPODChoice(
-//             PwPODChoiceFlags::empty(),
-//             PwPODChoiceEnum::None(v),
-//         )))
-//     }
-// }
 impl From<(AsChoice, Vec<i32>)> for PodValue { // Enumerable
     fn from((_, v): (AsChoice, Vec<i32>)) -> Self {
         if v.is_empty() {
@@ -699,22 +567,6 @@ impl From<(AsChoice, AsSteps<i32>)> for PodValue { // Rango (discreto)
 }
 
 /// LONG
-// impl From<(AsChoice, i64)> for PodValue { // Discreto
-//     fn from((_, v): (AsChoice, i64)) -> Self {
-//         PodValue::Choice(PwPODChoiceValue::Long(PwPODChoice(
-//             PwPODChoiceFlags::empty(),
-//             PwPODChoiceEnum::None(v),
-//         )))
-//     }
-// }
-// impl From<(AsChoice, u64)> for PodValue { // Discreto
-//     fn from((_, v): (AsChoice, u64)) -> Self {
-//         PodValue::Choice(PwPODChoiceValue::Long(PwPODChoice(
-//             PwPODChoiceFlags::empty(),
-//             PwPODChoiceEnum::None(v.cast_signed()),
-//         )))
-//     }
-// }
 impl From<(AsChoice, Vec<i64>)> for PodValue { // Enumerable
     fn from((_, v): (AsChoice, Vec<i64>)) -> Self {
         if v.is_empty() {
@@ -789,14 +641,6 @@ impl From<(AsChoice, AsSteps<f32>)> for PodValue { // Rango (discreto)
 }
 
 /// DOUBLE
-// impl From<(AsChoice, f64)> for PodValue { // Discreto
-//     fn from((_, v): (AsChoice, f64)) -> Self {
-//         PodValue::Choice(PwPODChoiceValue::Double(PwPODChoice(
-//             PwPODChoiceFlags::empty(),
-//             PwPODChoiceEnum::None(v),
-//         )))
-//     }
-// }
 impl From<(AsChoice, Vec<f64>)>  for PodValue { // Enumerable
     fn from((_, v): (AsChoice, Vec<f64>)) -> Self {
          if v.is_empty() {
@@ -822,14 +666,6 @@ impl From<(AsChoice, AsSteps<f64>)>  for PodValue { // Rango (discreto)
 }
 
 /// RECTANGLE
-// impl From<(AsChoice, AsRectangle,u32,u32)>  for PodValue {  // Discreto
-//     fn from((_,_, width, height): (AsChoice, AsRectangle,u32,u32)) -> Self {
-//         PodValue::Choice(PwPODChoiceValue::Rectangle(PwPODChoice(PwPODChoiceFlags::empty(), PwPODChoiceEnum::None(PwPODRectangle{
-//             width: width,
-//             height: height,
-//         }))))
-//     }
-// }
 impl From<(AsChoice, Vec<PwPODRectangle>)>  for PodValue { // Enumerable
     fn from((_, v): (AsChoice, Vec<PwPODRectangle>)) -> Self {
          if v.is_empty() {
@@ -847,14 +683,6 @@ impl From<(AsChoice, Vec<PwPODRectangle>)>  for PodValue { // Enumerable
 
 
 /// FRACTION
-// impl From<(AsChoice, AsFraction,u32,u32)>  for PodValue {  // Discreto
-//     fn from((_,_,num,denom): (AsChoice, AsFraction,u32,u32)) -> Self {
-//         PodValue::Choice(PwPODChoiceValue::Fraction(PwPODChoice(PwPODChoiceFlags::empty(), PwPODChoiceEnum::None(PwPODFraction{
-//             num: num,
-//             denom: denom
-//         }))))
-//     }
-// }
 impl From<(AsChoice, Vec<PwPODFraction>)>  for PodValue { // Enumerable
     fn from((_, v): (AsChoice, Vec<PwPODFraction>)) -> Self {
          if v.is_empty() {
@@ -870,11 +698,6 @@ impl From<(AsChoice, Vec<PwPODFraction>)>  for PodValue { // Enumerable
 }
 
 /// FILE DESCRIPTOR
-// impl From<(AsChoice, AsFD,i64)>  for PodValue {  // Discreto
-//     fn from((_,_, v): (AsChoice, AsFD,i64)) -> Self {
-//         PodValue::Choice(PwPODChoiceValue::Fd(PwPODChoice(PwPODChoiceFlags::empty(), PwPODChoiceEnum::None(pipewire::spa::utils::Fd(v)))))
-//     }
-// }
 impl From<(AsChoice, Vec<PwPODFD>)>  for PodValue { // Enumerable
     fn from((_, v): (AsChoice, Vec<PwPODFD>)) -> Self {
          if v.is_empty() {
@@ -928,8 +751,6 @@ impl From<(AsChoice, Vec<PodValue>)> for PodValue { // Transforma en ChoiceEnum
         value
     }
 }
-
-
 
 // -------------------------------------------------------------------
 // Conversión hacia el Value original de PipeWire
