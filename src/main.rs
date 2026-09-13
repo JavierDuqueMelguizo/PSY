@@ -2,14 +2,13 @@
 use zbus::{Connection, zvariant::OwnedFd};
 
 mod utils;
-use utils::logging::{LOGGER};
-use std::{io::Write};
 
 mod dbus;
 use dbus::{krunner::WindowsRunnerClient, screencast::ScreenCastRunnerClient};
 
+use crate::pw_handlers::{PipewireHandlerBuilder, StreamProcessorPipewireBuilder, VideoProcessorGPU};
+
 mod pw_handlers;
-use pw_handlers::stream_handler::{PipewireHandlerBuilder};
 
 // No usandose:
 // mod wayland;
@@ -20,18 +19,18 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let connection = Connection::session().await?;
     
     // 1. Listar ventanas disponibles (opcional)...
-    let result :  Result<(), Box<dyn std::error::Error>> = 
+    let _ :  Result<(), Box<dyn std::error::Error>> = 
     {
-        let mut logger = LOGGER.lock().await;
+        // let mut logger = LOGGER.lock().await;
         let client = WindowsRunnerClient::new(&connection).await?;
 
         let windows = client.get_active_windows().await?;
-        writeln!(logger,"--- Ventanas Abiertas ({}) ---", windows.len())?;
+        log_write_async!("--- Ventanas Abiertas ({}) ---", windows.len())?;
         for win in windows {
-            writeln!(logger,"• [{}] {} {} ({} {})", win.id, win.title, win.app_id, win.category, win.relevance)?;
-            writeln!(logger,"  Propiedades[Keys]: {:#?}", win.properties.into_keys().collect::<Vec<_>>())?;
+            log_write_async!("• [{}] {} {} ({} {})", win.id, win.title, win.app_id, win.category, win.relevance)?;
+            log_write_async!("  Propiedades[Keys]: {:#?}", win.properties.into_keys().collect::<Vec<_>>())?;
         }
-        logger.flush()?;
+        // logger.flush()?;
 
         Ok(())
     };
@@ -48,24 +47,23 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         
         let result = client.get_pipewire_node_id().await?;
 
-        let mut logger = LOGGER.lock().await;
-        writeln!(logger,"--- PipeWire Node ID para la ventana: {} , fd: {:?} ---", result.0, result.1)?;
-        logger.flush()?;
+        log_write_async!("--- PipeWire Node ID para la ventana: {} , fd: {:?} ---", result.0, result.1)?;
 
         Ok(result)
     };
 
     // 3. Llamar a Pipewire para que empiece a grabar de la fuente y poder leer datos...
-    let result : Result<(), Box<dyn std::error::Error>> = {
+    let _ : Result<(), Box<dyn std::error::Error>> = {
         let (node, fd) = result?;
         let std_fd : std::os::fd::OwnedFd = fd.into();
         let mut stream_handler = PipewireHandlerBuilder::new(None)?
             .context(None)?
             .core(std_fd, None)?
             .build()?;
-        let stream = stream_handler.default_video_stream(
+        let _ = stream_handler.default_video_stream(
             "pipewire-yolo-client", 
             Some(node),
+            StreamProcessorPipewireBuilder::<VideoProcessorGPU>::new()
         )?;
 
 
@@ -76,9 +74,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
         Ok(())
     };
-
-    let mut logger = LOGGER.lock().await;   
-    writeln!(logger,"--- TERMINANDO MAIN ---")?;
+ 
+    log_write_async!("--- TERMINANDO MAIN ---")?;
 
     connection.close().await?;
     unsafe{

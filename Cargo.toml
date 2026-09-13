@@ -8,17 +8,28 @@ edition = "2024"
 tokio = { version = "1.52.1", features = ["full"] }
 tokio-util = { version = "0.7", features = ["full"] }
 tokio-stream = "0.1.19"
-# Doc: https://docs.rs/pipewire-native/latest/pipewire_native/ (solo funciona para audio) # pipewire-native = { path = "./dependencies/pipewire-native-rs/pipewire" }
-pipewire = "0.10.0"
-
+# Utiles varios necesarios:
+uuid = { version = "1.10", features = ["v4"] }
 serde = "1.0.229"
 serde_json = "1.0.151"
+bitflags = "2.13.1"
+
+# Para comunicación con Compositor de escritorio KWin
 zbus = "5.18.0"
 
-uuid = { version = "1.10", features = ["v4"] }
-wayland-client = "0.31.15"
-wayland-backend = "0.3.16"
-wayland-scanner = "0.31.11"
+# Comunicación con Servidor Multimedia PipeWire
+pipewire = { version = "0.10.1", features = ["v0_3_65"] }
+# Doc: https://docs.rs/pipewire-native/latest/pipewire_native/ (solo funciona para audio) # pipewire-native = { path = "./dependencies/pipewire-native-rs/pipewire" }
+
+# Para comunicación con Kernel (especificamente con GPU NVIDIA)
+libc = "0.2"
+
+# Contiene los flags "DRM_*"
+drm-fourcc = "2.2.0"
+
+#wayland-client = "0.31.15"
+#wayland-backend = "0.3.16"
+#wayland-scanner = "0.31.11"
 
 
 

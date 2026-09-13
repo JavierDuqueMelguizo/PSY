@@ -26,6 +26,104 @@ impl<W1 : Write, W2 : Write> Write for LogWriter<W1, W2>
 }
 
 
+/// MACROS
+#[macro_export]
+macro_rules! log_write_async{
+    () => {{
+        use std::{io::Write};
+        use crate::utils::logging::{LOGGER};
+
+        let mut logger = LOGGER.lock().await;
+        write!(logger, "\n")
+    }};
+    ($($arg:tt)*) => {{
+        use std::{io::Write};
+        use crate::utils::logging::{LOGGER};
+
+        let mut logger = LOGGER.lock().await;
+        write!(logger, $($arg)*)
+    }};
+}
+#[macro_export]
+macro_rules! log_write{
+    
+    () => {{
+        use std::{io::Write};
+        use crate::utils::logging::{LOGGER};
+
+        if let Some(logger) = LOGGER.try_lock().ok().as_mut(){
+            let _ = write!(logger, "\n")
+        }
+        else{
+            print!("\n");
+        }
+        
+    }};
+    ($($arg:tt)*) => {{
+        use std::{io::Write};
+        use crate::utils::logging::{LOGGER};
+
+        if let Some(logger) = LOGGER.try_lock().ok().as_mut(){
+            let _ = write!(logger, $($arg)*)
+        }
+        else{
+            println!($($arg)*);
+        }
+        
+    }};
+}
+
+
+#[macro_export]
+macro_rules! log_writeln_async{
+    () => {{
+        use std::{io::Write};
+        use crate::utils::logging::{LOGGER};
+
+        let mut logger = LOGGER.lock().await;
+        writeln!(logger, "\n")
+    }};
+    ($($arg:tt)*) => {{
+        use std::{io::Write};
+        use crate::utils::logging::{LOGGER};
+
+        let mut logger = LOGGER.lock().await;
+        writeln!(logger, $($arg)*)
+    }};
+}
+#[macro_export]
+macro_rules! log_writeln{
+    () => {{
+        use std::{io::Write};
+        use crate::utils::logging::{LOGGER};
+
+        if let Some(logger) = LOGGER.try_lock().ok().as_mut(){
+            let _ = writeln!(logger, "\n");
+        }
+        else{
+            print!("\n");
+            //Err(std::io::Error::new(std::io::ErrorKind::ResourceBusy, "El recurso no se encuentra"))
+        }
+        
+    }};
+    
+    ($($arg:tt)*) => {{
+        use std::{io::Write};
+        use crate::utils::logging::{LOGGER};
+
+
+        if let Some(logger) = LOGGER.try_lock().ok().as_mut(){
+            let _ = writeln!(logger, $($arg)*);
+        }
+        else{
+            println!($($arg)*);
+            //Err(std::io::Error::new(std::io::ErrorKind::ResourceBusy, "El recurso no se encuentra"))
+        }
+        
+    }};
+}
+
+
 // Patron Singleton
 type Logger = LogWriter<std::io::Stdout, std::fs::File>;
 
@@ -38,3 +136,5 @@ pub static LOGGER : LazyLock<Mutex<Logger>> = LazyLock::new(|| {
          writer2: log_file,
      })
 });
+
+
