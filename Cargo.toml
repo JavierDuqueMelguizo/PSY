@@ -14,6 +14,12 @@ serde = "1.0.229"
 serde_json = "1.0.151"
 bitflags = "2.13.1"
 
+# Listas y otras herramientas para programación concurrente
+crossbeam = "0.8.5"
+
+# Para codificar/transformar los pixeles BGRA en H264 u otros.
+ffmpeg-the-third = "6.0.0"
+
 # Para comunicación con Compositor de escritorio KWin
 zbus = "5.18.0"
 
@@ -23,9 +29,13 @@ pipewire = { version = "0.10.1", features = ["v0_3_65"] }
 
 # Para comunicación con Kernel (especificamente con GPU NVIDIA)
 libc = "0.2"
-
+# Para trabajar con DMA (Direct Memory Access) de Hardware (GPU este caso)
+dma-buf = "0.5.0"
 # Contiene los flags "DRM_*"
 drm-fourcc = "2.2.0"
+bytes = "1.12.1"
+
+
 
 #wayland-client = "0.31.15"
 #wayland-backend = "0.3.16"

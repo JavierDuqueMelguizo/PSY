@@ -6,6 +6,7 @@ use tokio_stream::StreamExt;
 use zbus::{zvariant::{LE, OwnedObjectPath, OwnedFd, OwnedValue, Value, serialized::{Context, Data}}};
 
 use super::{IScreenCastProxy, IRequestProxy};
+use crate::log_write_async;
 use crate::utils::{self, logging::LOGGER};
 
 // const APP_NAME : &str = "pipewire_yolo_streaming";
@@ -95,7 +96,7 @@ impl<'a> ScreenCastRunnerClient<'a> {
       let request_handler = self.proxy.create_session(options).await?;
       writeln!(logger, "CreateSession -> Response:{request_handler:?}")?;
 
-      // Obtener el resultado quem e interesa:
+      // Obtener el resultado que me interesa:
       // (el 'session_handler' que me será necesario inmediatamente despues )
       let request_proxy = self.get_request_proxy(request_handler).await?;
       let mut signals = request_proxy.receive_response().await?;
@@ -128,18 +129,18 @@ impl<'a> ScreenCastRunnerClient<'a> {
         session_handle: OwnedObjectPath,
         options : HashMap<&str, OwnedValue>
     ) -> zbus::Result<OwnedObjectPath> {
-      let mut logger = LOGGER.lock().await;
 
       let mut _options : HashMap<&str, Value> = options.into_iter().map(
         |(key,value)| (key, Value::from(value))
       ).collect();
       _options.insert("handle_token", Value::from(request_path));
+
       // Si tenemos, el token "restore_data" guardado, lo reutilizamos
       if let Some(restore_data) = utils::load_data(RESTORE_FILE_PATH).await {
         let ctxt = Context::new_dbus(LE, 0);
         let (value , _): (OwnedValue, _) = Data::new(restore_data, ctxt).deserialize().expect("Error deserializando 'restore_data'");
-        writeln!(logger, "Reutilizando restore_data guardado previamente...")?;
-        writeln!(logger, "{}", serde_json::to_string(&value).expect("No se pudo serializar 'restore_data'"))?;
+        log_write_async!("Reutilizando restore_data guardado previamente...")?;
+        log_write_async!( "{}", serde_json::to_string(&value).expect("No se pudo serializar 'restore_data'"))?;
         _options.insert("restore_token", Value::from(value));
       }
       Ok(self.proxy.select_sources( session_handle, _options).await?)
@@ -151,7 +152,6 @@ impl<'a> ScreenCastRunnerClient<'a> {
         session_handle: OwnedObjectPath,
         parent_window: Option<&str>,
     ) -> zbus::Result<u32> {
-      let mut logger = LOGGER.lock().await;
 
       let _parent_window = match parent_window{
         Some(value) => value,
@@ -161,7 +161,7 @@ impl<'a> ScreenCastRunnerClient<'a> {
         ("handle_token", Value::from(request_path)),
       ]);
       let request_handler = self.proxy.start(session_handle, _parent_window, options).await?;
-      writeln!(logger, "Start -> Response:{request_handler:}")?;
+      log_write_async!("Start -> Response:{request_handler:}")?;
 
       let request_proxy = self.get_request_proxy(request_handler).await?;
       let mut signals = request_proxy.receive_response().await?;
@@ -169,7 +169,7 @@ impl<'a> ScreenCastRunnerClient<'a> {
       let node_id = loop {
         let signal = signals.next().await.expect("El stream terminó sin recibir señal");
         let input = signal.args()?;
-        writeln!(logger, "Request::Response -> Code:{}, Message:{}", input.response(), signal.message())?;
+        log_write_async!("Request::Response -> Code:{}, Message:{}", input.response(), signal.message())?;
 
         let results = input.results();
         
@@ -178,10 +178,10 @@ impl<'a> ScreenCastRunnerClient<'a> {
           let ctxt = Context::new_dbus(LE, 0);
           let bytes = zbus::zvariant::to_bytes(ctxt, restore_token)?;
           if let Err(e) = utils::save_data(RESTORE_FILE_PATH, &bytes).await {
-              writeln!(logger, "Error al guardar restore_token: {}", e)?;
+              log_write_async!("Error al guardar restore_token: {}", e)?;
           } else {
             // (vendor_name, version, implementation_data)
-              writeln!(logger, "Nuevo restore_token guardado correctamente en disco.")?;
+              log_write_async!("Nuevo restore_token guardado correctamente en disco.")?;
           }
         }
 

@@ -3,7 +3,7 @@ use std::collections::HashMap;
 use std::os::fd::AsRawFd;
 use std::os::raw::c_void;
 use pipewire::spa::pod::{
-    CanonicalFixedSizedPod, ChoiceValue as PwPODChoiceValue, Object as PwPODObject, Pod, PropertyFlags as PwPropertyFlags, Value as PwPODValue, ValueArray as PwPODValueArray
+    CanonicalFixedSizedPod, ChoiceValue as PwPODChoiceValue, Object as PwPODObject, PropertyFlags as PwPropertyFlags, Value as PwPODValue, ValueArray as PwPODValueArray
 };
 use pipewire::spa::utils::{
     Choice as PwPODChoice, 
@@ -17,14 +17,14 @@ use pipewire::spa::utils::{
 
 use super::{KeyValue};
 
-pub mod pipewire_handler_builder;
-pub use pipewire_handler_builder::*;
+#[path = "stream-builder.rs"]
+pub mod stream_builder;
+pub use stream_builder::*;
 
-pub mod stream_pipewire_builder;
-pub use stream_pipewire_builder::*;
 
-pub mod stream_processor_pipewire_builder;
-pub use stream_processor_pipewire_builder::*;
+#[path = "stream-events-handler.rs"]
+pub mod stream_events_handler;
+pub use stream_events_handler::*;
 
 
 #[macro_export]
@@ -57,7 +57,6 @@ impl ToSpaProperties for pipewire::spa::param::video::VideoInfoRaw {
     fn to_spa_properties(&self) -> HashMap<u32, KeyValue> {
 
         use pipewire::spa::{
-            utils::Id,
             param::{
                 video::{VideoFormat, VideoInterlaceMode}, 
                 format::FormatProperties
@@ -68,7 +67,7 @@ impl ToSpaProperties for pipewire::spa::param::video::VideoInfoRaw {
 
         // FORMAT
         let fmt = self.format();
-        add_if!(properties, VideoFormat, fmt != VideoFormat::Unknown, Id(fmt.as_raw()));
+        add_if!(properties, VideoFormat, fmt != VideoFormat::Unknown, (AsId, fmt.as_raw()));
 
         // FLAGS (omitidos, no se insertan, se recibe de PW de los eventos)
 
@@ -104,7 +103,7 @@ impl ToSpaProperties for pipewire::spa::param::video::VideoInfoRaw {
 
         // INTERLACE MODE
         let interlace = self.interlace_mode();
-        add_if!(properties, VideoInterlaceMode, interlace != VideoInterlaceMode::Progressive, Id(interlace.as_raw()));
+        add_if!(properties, VideoInterlaceMode, interlace != VideoInterlaceMode::Progressive, (AsId, interlace.as_raw()));
 
         // PIXEL ASPECT RATIO
         let par = self.pixel_aspect_ratio();
@@ -112,31 +111,31 @@ impl ToSpaProperties for pipewire::spa::param::video::VideoInfoRaw {
 
         // MULTIVIEW MODE
         let mv_mode = self.multiview_mode();
-        add_if!(properties, VideoMultiviewMode, mv_mode != 0, Id(mv_mode as u32));
+        add_if!(properties, VideoMultiviewMode, mv_mode != 0, (AsId, mv_mode as u32));
 
         // MULTIVIEW FLAGS
         let mv_flags = self.multiview_flags();
-        add_if!(properties, VideoMultiviewFlags, mv_flags != 0, Id(mv_flags));
+        add_if!(properties, VideoMultiviewFlags, mv_flags != 0, (AsId, mv_flags));
 
         // CHROMA SITE
         let chroma = self.chroma_site();
-        add_if!(properties, VideoChromaSite, chroma != 0, Id(chroma));
+        add_if!(properties, VideoChromaSite, chroma != 0, (AsId, chroma));
 
         // COLOR RANGE
         let range = self.color_range();
-        add_if!(properties, VideoColorRange, range != 0, Id(range));
+        add_if!(properties, VideoColorRange, range != 0, (AsId, range));
 
         // COLOR MATRIX
         let matrix = self.color_matrix();
-        add_if!(properties, VideoColorMatrix, matrix != 0, Id(matrix));
+        add_if!(properties, VideoColorMatrix, matrix != 0, (AsId, matrix));
 
         // TRANSFER FUNCTION
         let transfer = self.transfer_function();
-        add_if!(properties, VideoTransferFunction, transfer != 0, Id(transfer));
+        add_if!(properties, VideoTransferFunction, transfer != 0, (AsId, transfer));
 
         //COLOR PRIMARIES
         let primaries = self.color_primaries();
-        add_if!(properties, VideoColorPrimaries, primaries != 0, Id(primaries));
+        add_if!(properties, VideoColorPrimaries, primaries != 0, (AsId, primaries));
 
         properties
     }
@@ -147,7 +146,6 @@ impl ToSpaProperties for pipewire::spa::param::audio::AudioInfoRaw {
 
         use pipewire::spa::{
             sys::SPA_AUDIO_MAX_CHANNELS,
-            utils::Id,
             param::{
                 audio::{AudioFormat, AudioInfoRawFlags}, 
                 format::FormatProperties
@@ -158,7 +156,7 @@ impl ToSpaProperties for pipewire::spa::param::audio::AudioInfoRaw {
 
         // FORMAT
         let fmt = self.format();
-        add_if!(properties, AudioFormat, fmt != AudioFormat::Unknown, Id(fmt.as_raw()));
+        add_if!(properties, AudioFormat, fmt != AudioFormat::Unknown, (AsId, fmt.as_raw()));
 
         // FLAGS
         let flags = self.flags();
@@ -178,7 +176,7 @@ impl ToSpaProperties for pipewire::spa::param::audio::AudioInfoRaw {
             properties,
             AudioPosition,
             position != [0; SPA_AUDIO_MAX_CHANNELS as usize],
-            Id(position[0])
+            (AsId, position[0])
         );
 
         properties
@@ -275,6 +273,12 @@ impl PartialEq for PodValue{
 // Conversiones FROM (tipos primitivos/comunes -> PodValue)
 // -------------------------------------------------------------------
 
+impl From<()> for PodValue{
+    fn from(_: ()) -> Self {
+        PodValue::None
+    }
+}
+
 /// BOOLEAN
 impl From<bool> for PodValue {
     fn from(v: bool) -> Self {
@@ -283,9 +287,10 @@ impl From<bool> for PodValue {
 }
 
 /// ID
-impl From<PwPODId> for PodValue {
-    fn from(v: PwPODId) -> Self {
-        PodValue::Id(v)
+pub struct AsId;
+impl From<(AsId, u32)> for PodValue {
+    fn from((_, v): (AsId, u32)) -> Self {
+        PodValue::Id(PwPODId(v))
     }
 }
 
@@ -348,7 +353,6 @@ impl From<String> for PodValue {
         PodValue::String(v)
     }
 }
-
 impl From<&str> for PodValue {
     fn from(v: &str) -> Self {
         PodValue::String(v.to_string())
@@ -523,6 +527,15 @@ where
 }
 
 /// BOOL
+/// Comentado por si hace falta recuperarlo, pero lo dudo...
+// impl From<(AsChoice, bool)> for PodValue { // Discreto
+//     fn from((_, v): (AsChoice, bool)) -> Self {
+//         PodValue::Choice(PwPODChoiceValue::Bool(PwPODChoice(
+//             PwPODChoiceFlags::empty(),
+//             PwPODChoiceEnum::None(v),
+//         )))
+//     }
+// }
 
 /// ID
 impl From<(AsChoice, Vec<PwPODId>)> for PodValue { // Enumerable
@@ -607,14 +620,6 @@ impl From<(AsChoice, AsSteps<i64>)> for PodValue { // Rango (discreto)
 }
 
 /// FLOAT
-// impl From<(AsChoice, f32)> for PodValue { // Discreto
-//     fn from((_, v): (AsChoice, f32)) -> Self {
-//         PodValue::Choice(PwPODChoiceValue::Float(PwPODChoice(
-//             PwPODChoiceFlags::empty(),
-//             PwPODChoiceEnum::None(v),
-//         )))
-//     }
-// }
 impl From<(AsChoice, Vec<f32>)> for PodValue { // Enumerable
     fn from((_, v): (AsChoice, Vec<f32>)) -> Self {
         if v.is_empty() {

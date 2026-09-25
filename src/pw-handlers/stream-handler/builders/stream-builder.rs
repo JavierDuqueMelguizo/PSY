@@ -20,7 +20,7 @@ use pipewire::{spa::{
 }, stream::StreamRc};
 
 
-use crate::{kv, pw_handlers::stream_handler::{AsChoice, BufferMaskTypes, KeyValue, builders::PodValue}};
+use crate::{kv, pw_handlers::{AsId, stream_handler::{AsChoice, BufferMaskTypes, KeyValue, builders::PodValue}}};
 
 pub struct NeedStreamFlags;
 pub struct NeedStreamProperties;
@@ -28,10 +28,9 @@ pub struct NeedMediaType;
 pub struct NeedMediaSubtype;
 pub struct NeedFormatParams;
 pub struct NeedBufferParams;
-
 pub struct StreamReady;
 
-pub struct StreamPipewireBuilder<State>{
+pub struct StreamBuilder<State>{
     stream_flags: pipewire::stream::StreamFlags,
     stream_properties: pipewire::properties::PropertiesBox,//HashMap<&'static str, Vec<u8> >,
     format_params : HashMap<u32, Vec<KeyValue>>,
@@ -39,10 +38,10 @@ pub struct StreamPipewireBuilder<State>{
     buffer_params : HashMap<u32, PwProperty>,
     _state: PhantomData<State>
 }
-impl<State> StreamPipewireBuilder<State> {
+impl<State> StreamBuilder<State> {
     // Método privado que realiza la conversión de estado
-    fn transition<NewState>(self) -> StreamPipewireBuilder<NewState> {
-        StreamPipewireBuilder { 
+    fn transition<NewState>(self) -> StreamBuilder<NewState> {
+        StreamBuilder { 
             stream_flags: self.stream_flags, 
             stream_properties: self.stream_properties,
             format_params: self.format_params, 
@@ -53,7 +52,7 @@ impl<State> StreamPipewireBuilder<State> {
     }
 }
 
-impl StreamPipewireBuilder<NeedStreamFlags> {
+impl StreamBuilder<NeedStreamFlags> {
 
     pub fn new() -> Self {
 
@@ -69,57 +68,53 @@ impl StreamPipewireBuilder<NeedStreamFlags> {
         }
     }
 
-    pub fn add_flag(mut self, flag : pipewire::stream::StreamFlags) -> Self { self.stream_flags |= flag; self }
-    pub fn remove_flags(mut self, flags : pipewire::stream::StreamFlags) -> Self { self.stream_flags &= !flags; self}
     pub fn set_flags(mut self, flags : pipewire::stream::StreamFlags) -> Self  { self.stream_flags = flags; self }
 
-    pub fn next(self) -> StreamPipewireBuilder<NeedStreamProperties>{ self.transition() }
+    pub fn next(self) -> StreamBuilder<NeedStreamProperties>{ self.transition() }
 }
 
-impl StreamPipewireBuilder<NeedStreamProperties> {
+impl StreamBuilder<NeedStreamProperties> {
     
-    pub fn add_property(mut self, key : impl Into<Vec<u8>>, value : impl Into<Vec<u8>>) -> Self  { self.stream_properties.insert(key, value); self}
     pub fn set_properties(mut self, properties : pipewire::properties::PropertiesBox) -> Self  { self.stream_properties = properties; self}
 
-    pub fn next(self) -> StreamPipewireBuilder<NeedMediaType>{ self.transition() }
+    pub fn next(self) -> StreamBuilder<NeedMediaType>{ self.transition() }
 }
 
-impl StreamPipewireBuilder<NeedMediaType>{
+impl StreamBuilder<NeedMediaType>{
     
     pub fn set_media_type(mut self, media_type : pipewire::spa::param::format::MediaType) -> Self{
 
         use pipewire::spa::{
-            utils::Id,
             param::format::FormatProperties
         };
 
         self.format_params.insert(
             FormatProperties::MediaType.as_raw(), 
-            vec![kv!(FormatProperties::MediaType => Id(media_type.as_raw()))]
+            vec![kv!(FormatProperties::MediaType => (AsId, media_type.as_raw()))]
         );
 
         self
     }
 
-    pub fn next(self) -> StreamPipewireBuilder<NeedMediaSubtype>{ self.transition() }
+    pub fn next(self) -> StreamBuilder<NeedMediaSubtype>{ self.transition() }
 }
 
-impl StreamPipewireBuilder<NeedMediaSubtype>{
+impl StreamBuilder<NeedMediaSubtype>{
     
     pub fn set_media_subtype(mut self, media_subtype : pipewire::spa::param::format::MediaSubtype) -> Self {
 
         self.format_params.insert(
             PwFormatProperties::MediaSubtype.as_raw(), 
-            vec![kv!(PwFormatProperties::MediaSubtype => PwID(media_subtype.as_raw())).into()]
+            vec![kv!(PwFormatProperties::MediaSubtype => (AsId, media_subtype.as_raw())).into()]
         );
 
         self
     }
 
-    pub fn next(self) -> StreamPipewireBuilder<NeedBufferParams>{ self.transition() }
+    pub fn next(self) -> StreamBuilder<NeedBufferParams>{ self.transition() }
 }
 
-impl StreamPipewireBuilder<NeedBufferParams>{
+impl StreamBuilder<NeedBufferParams>{
 
     pub fn set_buffer_type(
         mut self,
@@ -140,32 +135,17 @@ impl StreamPipewireBuilder<NeedBufferParams>{
         self
     }
 
-    pub fn next(self) -> StreamPipewireBuilder<NeedFormatParams>{ self.transition() }
+    pub fn next(self) -> StreamBuilder<NeedFormatParams>{ self.transition() }
 
 }
 
-impl StreamPipewireBuilder<NeedFormatParams>{
+impl StreamBuilder<NeedFormatParams>{
 
-    pub fn add_complex_format_param(mut self, property: KeyValue) -> Self{
+    pub fn add_format_param(mut self, property: KeyValue ) -> Self {
         // COMPROBACIONES
-        if property.1.is_simple_value() {
-            panic!("Intentando introducir valor simple ({:?}) en valor complejo", property.1);
-        }
-
-        // INSERCIÓN (sobreescribe)
-        self.format_params.insert(property.0.as_raw(), vec![property]);
-
-        self
-    }
-    pub fn add_simple_format_param(mut self, property: KeyValue ) -> Self {
-        // COMPROBACIONES
-        // De momento solo admito añadir valores PodValue catalogados como 'simples'
-        if !property.1.is_simple_value() {
-            panic!("Intentando introducir valor complejo ({:?}) en valor simple para clave: {:?}", property.1, property.0);
-        }
-        // Si no tiene nada, inicializó el contenedor. Si tiene algo, miro que sea del mismo tipo de PodValue
+        // Si tiene algo, miro que sea del mismo tipo de PodValue
         match self.format_params.get( &property.0.as_raw() ){
-            None => { self.format_params.insert(property.0.as_raw(), Vec::new()); },
+            None => {},
             Some(value) => {
                 let first = value.first().unwrap();
                 if first.1 != property.1 {
@@ -175,7 +155,7 @@ impl StreamPipewireBuilder<NeedFormatParams>{
         };
 
         // INSERCIÓN
-        self.format_params.get_mut(&property.0.as_raw()).unwrap().push(property);
+        self.format_params.entry(property.0.as_raw()).or_default().push(property);
 
         self
     }
@@ -196,7 +176,7 @@ impl StreamPipewireBuilder<NeedFormatParams>{
         self
     }
 
-    pub fn next(mut self) -> StreamPipewireBuilder<StreamReady>{ 
+    pub fn next(mut self) -> StreamBuilder<StreamReady>{ 
 
         // REGLAS.
         // 1) De la documentación:
@@ -209,7 +189,8 @@ impl StreamPipewireBuilder<NeedFormatParams>{
             """
             Al flag modifier hay que añadirle la opción de "DRM_FORMAT_MOD_INVALID", que siempre estará presente
          */
-        self = self.add_simple_format_param(kv!(PwFormatProperties::VideoModifier => u64::from(drm_fourcc::DrmModifier::Invalid) ));
+        // ME funciona sin añadirle esto y si se lo añado, el mapeo desde CPU deja de funcionar...
+        //self = self.add_format_param(kv!(PwFormatProperties::VideoModifier => u64::from(drm_fourcc::DrmModifier::Invalid) ));
 
         // PREPARAMOS LOS PARAMETROS PARA HACERLOS VALIDOS
         self.built_format_params = self.format_params.drain().map(
@@ -218,7 +199,6 @@ impl StreamPipewireBuilder<NeedFormatParams>{
                     panic!("ERROR. Lista vacia para key : {:?}", PwFormatProperties::from_raw(id));
                 }
 
-    
                 if list.len() == 1 {
                     let KeyValue(key,value, option_flag ) = list.remove(0);
                     let flags = option_flag.unwrap_or(PwPropertyFlags::empty());
@@ -254,7 +234,7 @@ impl StreamPipewireBuilder<NeedFormatParams>{
 
 }
 
-impl StreamPipewireBuilder<StreamReady>{
+impl StreamBuilder<StreamReady>{
 
     pub fn build(self, core : pipewire::core::CoreRc, name : &str, node_id : Option<u32> ) -> Result<pipewire::stream::StreamRc, Box<dyn std::error::Error>> {
 
@@ -263,6 +243,9 @@ impl StreamPipewireBuilder<StreamReady>{
             type_ : PwSpaTypes::ObjectParamFormat.as_raw(),
             properties: self.built_format_params.into_values().collect()
         };
+        println!("OBJETO CONSTRUIDO:");
+        println!("{:#?}",format_params_obj);
+            
         let format_params_data: Vec<u8> = PwPodSerializer::serialize(
             std::io::Cursor::new(Vec::new()), 
             &PwValue::Object(format_params_obj)
@@ -271,7 +254,8 @@ impl StreamPipewireBuilder<StreamReady>{
             None => return Err("Error en la construcción del objeto POD".into()),
             Some(value) => value,
         };
-            
+
+       
         // Parametros para el buffer de memoria del cual se leerán los datos (en memoria CPU o la de GPU)
         let buffers_params_obj = PwPodObject{
             id: PwParamType::Buffers.as_raw(),

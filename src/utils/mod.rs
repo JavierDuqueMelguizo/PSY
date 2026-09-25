@@ -237,36 +237,3 @@ fn print_pod_array(value : &pipewire::spa::pod::Pod, padding : Option<usize>){
         log_writeln!("{}Bytes: {:?}", spaces, value.as_bytes());
     }
 }
-
-// ToDel: Esto es viejo, ya no funciona en versiones modernas de DRivers de Nvidia
-// const NVIDIA_MODIFIERS: &[i64] = &[
-//     216172782120099856,
-//     216172782120099857,
-//     216172782120099858,
-//     216172782120099859,
-//     216172782120099860,
-//     216172782120099861,
-//     216172782128496656,
-//     216172782128496657,
-//     216172782128496658,
-//     216172782128496659,
-//     216172782128496660,
-//     216172782128496661,
-//     72057594037927935,
-// ];
-// pub fn build_nvidia_mod_property() -> pipewire::spa::pod::Property{
-//     let nvidia_mod_property = pipewire::spa::pod::Property {
-//             key: pipewire::spa::param::format::FormatProperties::VideoModifier.as_raw(),
-//             flags: pipewire::spa::pod::PropertyFlags::empty(),
-//             value: pipewire::spa::pod::Value::Choice(pipewire::spa::pod::ChoiceValue::Long(
-//                 pipewire::spa::utils::Choice::<i64>(
-//                     pipewire::spa::utils::ChoiceFlags::empty(),
-//                     pipewire::spa::utils::ChoiceEnum::<i64>::Enum {
-//                         default: NVIDIA_MODIFIERS[0],
-//                         alternatives: NVIDIA_MODIFIERS.to_vec(),
-//                     },
-//                 ),
-//             )),
-//         };
-//     nvidia_mod_property
-// }

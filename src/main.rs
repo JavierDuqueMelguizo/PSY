@@ -6,12 +6,13 @@ mod utils;
 mod dbus;
 use dbus::{krunner::WindowsRunnerClient, screencast::ScreenCastRunnerClient};
 
-use crate::pw_handlers::{PipewireHandlerBuilder, StreamProcessorPipewireBuilder, VideoProcessorGPU};
 
+#[path = "pw-handlers/mod.rs"]
 mod pw_handlers;
+use pw_handlers::{PipewireHandlerBuilder, StreamEventsHandler, VideoEventsHandlerGPU, VideoEventsHandlerCPU, VideoStreamPipeWireHandler};
 
-// No usandose:
-// mod wayland;
+use crate::pw_handlers::{StreamPipewireHandler, VideoData};
+
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -21,7 +22,6 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // 1. Listar ventanas disponibles (opcional)...
     let _ :  Result<(), Box<dyn std::error::Error>> = 
     {
-        // let mut logger = LOGGER.lock().await;
         let client = WindowsRunnerClient::new(&connection).await?;
 
         let windows = client.get_active_windows().await?;
@@ -36,8 +36,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     };
 
     // 2. Levantar ScreenPortal para seleccionar fuente del streaming...
-    let result :  Result<(u32, OwnedFd), Box<dyn std::error::Error>> = {
+    let result_screen_portal :  Result<(u32, OwnedFd), Box<dyn std::error::Error>> = {
         let client = ScreenCastRunnerClient::new(&connection).await?;
+        // ToDo: Se que hay una forma de hacer que portal_Screen sea opcional, tengo que hacer ingenería inversa
+        // para entender como el fichero "restore_data.bin" se construye.
         //let window_uuid = "f630d34f-463a-4743-923c-cb829514f7a8";
         // let mut input: String = String::new();
         // println!("Ingrese el UUID de la ventana a capturar (ej: f630d34f-463a-4743-923c-cb829514f7a8): ");
@@ -52,57 +54,57 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         Ok(result)
     };
 
-    // 3. Llamar a Pipewire para que empiece a grabar de la fuente y poder leer datos...
-    let _ : Result<(), Box<dyn std::error::Error>> = {
-        let (node, fd) = result?;
+    let (tx , mut rx)  = tokio::sync::mpsc::channel::<VideoData<4>>(1000);
+    let events_handler = StreamEventsHandler::<VideoEventsHandlerCPU>::new();
+    // 3. Llamar a Pipewire para que empiece a grabar de la fuente y poder empezar a obtener datos...
+    let result_streaming: Result<(StreamPipewireHandler, tokio_util::sync::CancellationToken, tokio::task::JoinHandle<()>), Box<dyn std::error::Error>> = {
+        // Input
+        let name = "pipewire-yolo-client";
+        let (node, fd) = result_screen_portal?;
         let std_fd : std::os::fd::OwnedFd = fd.into();
+        
+        // Process
         let mut stream_handler = PipewireHandlerBuilder::new(None)?
             .context(None)?
             .core(std_fd, None)?
             .build()?;
         let _ = stream_handler.default_video_stream(
-            "pipewire-yolo-client", 
+            name,
             Some(node),
-            StreamProcessorPipewireBuilder::<VideoProcessorGPU>::new()
+            &events_handler
         )?;
+        stream_handler.setup_listener(name,  tx, &events_handler)?;
+        let (cancel_token, join_handle) = stream_handler.start();
 
-
-        let controls = stream_handler.start();
-
-        controls.1.await?;
-
-
-        Ok(())
+        // Output
+        Ok((stream_handler, cancel_token, join_handle))
     };
  
-    log_write_async!("--- TERMINANDO MAIN ---")?;
 
+    //4. Pasamos los frames (normalmente en formato BGRA) a un encoder para transformarlo en un formato consumible (opcional)
+    let _ : Result<(), Box<dyn std::error::Error>> = {
+        let (_stream_handler, _cancel_token, join_handle) = result_streaming?;
+        tokio::pin!(join_handle);
+        loop{
+            tokio::select! {
+                data = rx.recv() => {
+                    if let Some(video_data) = data {
+                        println!("Dimensiones del video recibido: {:?}", video_data.resolution());
+                        println!("Ejemplo de dato: {:?}",  video_data.pixel(400, 800))
+                    }
+                },
+                _ = &mut join_handle => { break; }
+            }
+        }
+       
+        Ok(())
+    };
+
+
+    log_write_async!("--- TERMINANDO MAIN ---")?;
     connection.close().await?;
-    unsafe{
-        pipewire::deinit();
-    }
+    unsafe{ pipewire::deinit();}
 
     Ok(())
 }
 
-
-/*
-# Primero verifico que estoy en Wayland.
-
-```
-$> echo $XDG_SESSION_TYPE
-wayland
-```
-
-# Quiero obtener la lista de  monitores y ventanas abiertas disponibles.
-## Obtener la lista de monitores disponibles:
-```
-for output in /sys/class/drm/card*-*\/status; do echo "$output: $(cat $output)"; done
-```
-
-# Obtener la lista de ventanas abiertas:
-```
-busctl --user call org.kde.KWin /WindowsRunner org.kde.krunner1 Match s "" | gawk -v RS='"' 'NR%2==0' | printf "$(cat)" | grep -vE "^(subtext|icon-data|0_)"
-```
-
-*/

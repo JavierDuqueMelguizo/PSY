@@ -23,17 +23,13 @@ impl PipewireHandlerBuilder<NeedMainLoop> {
 
     pub fn new(properties : Option<pipewire::properties::PropertiesBox>) -> Result<PipewireHandlerBuilder<NeedContext>, Box<dyn std::error::Error>> {
 
-        use pipewire::main_loop::MainLoopRc;
         use pipewire::thread_loop::ThreadLoopRc;
 
         let dict = match properties.as_ref(){
             None => None,
             Some(value) => Some(value.dict())
         };
-        let main_loop = match MainLoopRc::new(dict){
-            Err(err) => return Err(format!("Ha ocurrido un error iniciando MainLoop. Error {}", err).into()),
-            Ok(value) => value
-        };
+
 
         let thread_loop = unsafe{
               let thread_loop = match ThreadLoopRc::new(Some("jdm-stream"), dict){
